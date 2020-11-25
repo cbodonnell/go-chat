@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Websocket Chat</title>
+</head>
+<body>
+    <h1>Websocket Chat</h1>
+    <iframe width="100%" height="400px" id="chatbox""></iframe>
+    <input id="text" type="text" name="text" size="80" maxlength="256" placeholder="Chat with us!" autocomplete="off">
+    <input type="button" id="send" name="send" value="Send" onclick="send()"></p></td>
+    <script>
+        var exampleSocket = new WebSocket("ws://localhost:8080/ws");
+        exampleSocket.onopen = function (event) {
+            console.log('websocket open!')
+        };
+
+        exampleSocket.onmessage = function(evt) {
+            console.log("onmessage", evt);
+            var f = document.getElementById("chatbox").contentDocument;
+            var text = "";
+            var msg = JSON.parse(evt.data);
+            
+            if (msg.type == "message") {
+                text = "(" + msg.time + ") <b>" + msg.name + "</b>: " + msg.text + "<br>";
+            }
+
+            if (text.length) {
+                f.write(text);
+                document.getElementById("chatbox").contentWindow.scrollByPages(1);
+            }
+        }
+
+        // Send text to all users through the server
+        function send() {
+            var currentDate = new Date();
+            let time = currentDate.getHours() + ":" + currentDate.getMinutes() + ":" + currentDate.getSeconds();
+
+            // Construct a msg object containing the data the server needs to process the message from the chat client.
+            var msg = {
+                type: "message",
+                text: document.getElementById("text").value,
+                name: "admin",
+                time: new Date().toLocaleTimeString()
+            };
+
+            console.log("msg", JSON.stringify(msg));
+            // Send the msg object as a JSON-formatted string.
+            exampleSocket.send(JSON.stringify(msg));
+
+            // Blank the text input element, ready to receive the next line of text from the user.
+            document.getElementById("text").value = "";
+        }
+    </script>
+</body>
+</html>

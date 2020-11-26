@@ -13,10 +13,13 @@
         <input id="text" type="text" name="text" size="80" maxlength="256" placeholder="Send a message" autocomplete="off">
         <button type="submit" id="send">Send</button>
     </form>
-    <script>
-        var exampleSocket = new WebSocket("ws://localhost:8080/ws");
+    <script>ß
+        var exampleSocket = new WebSocket("ws://localhost:8080/chat");
         exampleSocket.onopen = function (event) {
             console.log('websocket open!', event);
+        };
+        exampleSocket.onclose = function (event) {
+            console.log('websocket closed!', event);
         };
 
         exampleSocket.onmessage = receive;
@@ -24,14 +27,15 @@
         function receive(event) {
             console.log("received event", event);
             var msg = JSON.parse(event.data);
+            var body = msg.body;
             
             switch (msg.type) {
                 case "count":
                     var connections = document.getElementById("connections");
-                    connections.innerText = msg.count.toString();
+                    connections.innerText = body.count.toString();
                     break;
                 case "message":
-                    var text = "(" + msg.time + ") <b>" + msg.name + "</b>: " + msg.text + "<br>";
+                    var text = "(" + body.time + ") <b>" + body.name + "</b>: " + body.text + "<br>";
                     var chatbox = document.getElementById("chatbox");
                     chatbox.contentDocument.write(text);
                     // console.log('scrolling to', chatbox.scrollHeight);
@@ -53,9 +57,11 @@
             if (text) {
                 var msg = {
                     type: "message",
-                    text: document.getElementById("text").value,
-                    name: "admin",
-                    time: new Date().toLocaleTimeString()
+                    body: {
+                        text: document.getElementById("text").value,
+                        name: "admin",
+                        time: new Date().toLocaleTimeString()
+                    }
                 };
 
                 console.log("sending message", JSON.stringify(msg));

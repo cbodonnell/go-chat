@@ -13,7 +13,6 @@ import (
 // TODO: Come up with a less global structure?
 var clients = make(map[*websocket.Conn]bool) // connected clients
 var broadcast = make(chan Message)           // broadcast channel
-var counts = make(chan Count)                // counts channel
 
 // Configure the upgrader
 var upgrader = websocket.Upgrader{
@@ -22,15 +21,19 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// Count struct
-type Count struct {
-	Type  string `json:"type"`
-	Count int    `json:"count"`
-}
-
 // Message struct
 type Message struct {
-	Type string `json:"type"`
+	Type string      `json:"type"`
+	Body interface{} `json:"body"`
+}
+
+// Count struct
+type Count struct {
+	Count int `json:"count"`
+}
+
+// Chat struct
+type Chat struct {
 	Text string `json:"text"`
 	Name string `json:"name"`
 	Time string `json:"time"`
@@ -45,12 +48,6 @@ func renderTemplate(w http.ResponseWriter, template string, data interface{}) {
 	}
 }
 
-func removeClient(client *websocket.Conn) {
-	client.Close()
-	delete(clients, client)
-	counts <- Count{Type: "count", Count: len(clients)}
-}
-
 // / GET
 func home(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "index.html", nil)
@@ -58,37 +55,25 @@ func home(w http.ResponseWriter, r *http.Request) {
 
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	// Upgrade initial GET request to a websocket
-	ws, err := upgrader.Upgrade(w, r, nil)
+	client, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer ws.Close()
+	defer client.Close()
 
-	clients[ws] = true
-	counts <- Count{Type: "count", Count: len(clients)}
+	clients[client] = true
+	broadcast <- Message{Type: "count", Body: Count{Count: len(clients)}}
 
 	for {
 		var msg Message
-		err := ws.ReadJSON(&msg)
+		err := client.ReadJSON(&msg)
 		if err != nil {
 			log.Printf("error reading message: %v", err)
-			removeClient(ws)
+			delete(clients, client)
+			broadcast <- Message{Type: "count", Body: Count{Count: len(clients)}}
 			break
 		}
 		broadcast <- msg
-	}
-}
-
-func handleCounts() {
-	for {
-		count := <-counts
-		for client := range clients {
-			err := client.WriteJSON(count)
-			if err != nil {
-				log.Printf("error writing count: %v", err)
-				removeClient(client)
-			}
-		}
 	}
 }
 
@@ -99,7 +84,9 @@ func handleMessages() {
 			err := client.WriteJSON(msg)
 			if err != nil {
 				log.Printf("error writing message: %v", err)
-				removeClient(client)
+				client.Close()
+				delete(clients, client)
+				broadcast <- Message{Type: "count", Body: Count{Count: len(clients)}}
 			}
 		}
 	}
@@ -111,10 +98,9 @@ func main() {
 
 	// Route handlers
 	r.HandleFunc("/", home).Methods("GET")
-	r.HandleFunc("/ws", handleConnections).Methods("GET")
+	r.HandleFunc("/chat", handleConnections).Methods("GET")
 
-	// Start listening for incoming counts and messages
-	go handleCounts()
+	// Start listening for incoming messages
 	go handleMessages()
 
 	// Run server

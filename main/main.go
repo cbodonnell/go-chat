@@ -53,8 +53,8 @@ func home(w http.ResponseWriter, r *http.Request) {
 	renderTemplate(w, "index.html", nil)
 }
 
+// / GET
 func handleConnections(w http.ResponseWriter, r *http.Request) {
-	// Upgrade initial GET request to a websocket
 	client, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Fatal(err)
@@ -99,6 +99,9 @@ func main() {
 	// Route handlers
 	r.HandleFunc("/", home).Methods("GET")
 	r.HandleFunc("/chat", handleConnections).Methods("GET")
+
+	// Static file handler
+	r.PathPrefix("/").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("./static"))))
 
 	// Start listening for incoming messages
 	go handleMessages()

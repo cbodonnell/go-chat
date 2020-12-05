@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"text/template"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
+	"github.com/rs/cors"
 )
 
 // TODO: Come up with a less global structure?
@@ -93,6 +95,15 @@ func handleMessages() {
 }
 
 func main() {
+	// Get configuration
+	ENV := os.Getenv("ENV")
+	if ENV == "" {
+		ENV = "dev"
+	}
+	fmt.Println(fmt.Sprintf("Running in ENV: %s", ENV))
+	// config := getConfig(ENV)
+	// debug = config.Debug
+
 	// Init router
 	r := mux.NewRouter()
 
@@ -107,7 +118,13 @@ func main() {
 	go handleMessages()
 
 	// Run server
-	port := 8080
+	port := 8081
 	fmt.Println(fmt.Sprintf("Serving on port %d", port))
+
+	// CORS in dev environment
+	if ENV == "dev" {
+		handler := cors.Default().Handler(r)
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), handler))
+	}
 	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), r))
 }

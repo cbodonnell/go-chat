@@ -88,7 +88,8 @@ func home(w http.ResponseWriter, r *http.Request) {
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	client, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		log.Fatal(err)
+		internalServerError(w, err)
+		return
 	}
 	defer client.Close()
 

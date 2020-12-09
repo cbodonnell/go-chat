@@ -1,4 +1,4 @@
-var exampleSocket = new WebSocket("ws://localhost:8080/chat");
+var exampleSocket = new WebSocket("ws://localhost:8081/chat");
 
 exampleSocket.onopen = function (event) {
     console.log('websocket open!', event);

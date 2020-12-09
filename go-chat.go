@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +13,25 @@ import (
 	"github.com/rs/cors"
 )
 
+// --- Configuration --- //
+
+var config Configuration
+
+func getConfig(ENV string) Configuration {
+	file, err := os.Open(fmt.Sprintf("config.%s.json", ENV))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	decoder := json.NewDecoder(file)
+	var config Configuration
+	err = decoder.Decode(&config)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return config
+}
+
 // TODO: Come up with a less global structure?
 var clients = make(map[*websocket.Conn]bool) // connected clients
 var broadcast = make(chan Message)           // broadcast channel
@@ -21,6 +41,15 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
+}
+
+// Configuration struct
+type Configuration struct {
+	Debug   bool   `json:"debug"`
+	Port    int    `json:"port"`
+	SSLCert string `json:"sslCert"`
+	SSLKey  string `json:"sslKey"`
+	JWTKey  string `json:"jwtKey"`
 }
 
 // Message struct
@@ -101,8 +130,10 @@ func main() {
 		ENV = "dev"
 	}
 	fmt.Println(fmt.Sprintf("Running in ENV: %s", ENV))
-	// config := getConfig(ENV)
-	// debug = config.Debug
+	config = getConfig(ENV)
+
+	// Start listening for incoming messages
+	go handleMessages()
 
 	// Init router
 	r := mux.NewRouter()
@@ -114,17 +145,19 @@ func main() {
 	// Static file handler
 	r.PathPrefix("/").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("./static"))))
 
-	// Start listening for incoming messages
-	go handleMessages()
+	// CORS in dev environment
+	handler := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000"},
+		AllowCredentials: true,
+		// Debug: true,
+	}).Handler(r)
 
 	// Run server
-	port := 8081
+	port := config.Port
 	fmt.Println(fmt.Sprintf("Serving on port %d", port))
 
-	// CORS in dev environment
 	if ENV == "dev" {
-		handler := cors.Default().Handler(r)
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), handler))
 	}
-	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), r))
+	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), config.SSLCert, config.SSLKey, r))
 }

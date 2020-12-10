@@ -70,6 +70,12 @@ type Chat struct {
 	Time string `json:"time"`
 }
 
+// Group struct
+type Group struct {
+	ID   int    `json:"id"`
+	Name string `json:"name"`
+}
+
 var templates = template.Must(template.ParseGlob("templates/*.html"))
 
 func renderTemplate(w http.ResponseWriter, template string, data interface{}) {
@@ -81,11 +87,28 @@ func renderTemplate(w http.ResponseWriter, template string, data interface{}) {
 
 // / GET
 func home(w http.ResponseWriter, r *http.Request) {
+	// TODO: Create a middleware for this...
+	// if !config.Debug {
+	// 	_, err := checkClaims(r)
+	// 	if err != nil {
+	// 		unauthorizedRequest(w, err)
+	// 		return
+	// 	}
+	// }
+
 	renderTemplate(w, "index.html", nil)
 }
 
 // / GET
 func handleConnections(w http.ResponseWriter, r *http.Request) {
+	// if !config.Debug {
+	// 	_, err := checkClaims(r)
+	// 	if err != nil {
+	// 		unauthorizedRequest(w, err)
+	// 		return
+	// 	}
+	// }
+
 	client, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		// badRequest(w, err)
@@ -125,6 +148,17 @@ func handleMessages() {
 	}
 }
 
+func jwtMiddleware(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, err := checkClaims(r)
+		if err != nil {
+			unauthorizedRequest(w, err)
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	// Get configuration
 	ENV := os.Getenv("ENV")
@@ -144,22 +178,22 @@ func main() {
 	r.HandleFunc("/", home).Methods("GET")
 	r.HandleFunc("/chat", handleConnections).Methods("GET")
 
-	// Static file handler
-	r.PathPrefix("/").Handler(http.StripPrefix("/static", http.FileServer(http.Dir("./static"))))
-
 	// CORS in dev environment
-	handler := cors.New(cors.Options{
+	cors := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000"},
 		AllowCredentials: true,
 		// Debug: true,
-	}).Handler(r)
+	})
 
 	// Run server
 	port := config.Port
 	fmt.Println(fmt.Sprintf("Serving on port %d", port))
 
 	if ENV == "dev" {
-		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), handler))
+		r.Use(cors.Handler)
+		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), r))
 	}
+
+	r.Use(jwtMiddleware)
 	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), config.SSLCert, config.SSLKey, r))
 }

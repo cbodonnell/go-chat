@@ -152,10 +152,10 @@ func jwtMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, err := checkClaims(r)
 		if err != nil {
+			fmt.Println("Unauthorized request from " + r.RemoteAddr)
 			unauthorizedRequest(w, err)
 			return
 		}
-		fmt.Println(r.RequestURI)
 		fmt.Println(claims)
 		h.ServeHTTP(w, r)
 	})

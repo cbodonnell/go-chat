@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"text/template"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -76,39 +75,22 @@ type Group struct {
 	Name string `json:"name"`
 }
 
-var templates = template.Must(template.ParseGlob("templates/*.html"))
+// var templates = template.Must(template.ParseGlob("templates/*.html"))
 
-func renderTemplate(w http.ResponseWriter, template string, data interface{}) {
-	err := templates.ExecuteTemplate(w, template, data)
-	if err != nil {
-		internalServerError(w, err)
-	}
-}
+// func renderTemplate(w http.ResponseWriter, template string, data interface{}) {
+// 	err := templates.ExecuteTemplate(w, template, data)
+// 	if err != nil {
+// 		internalServerError(w, err)
+// 	}
+// }
 
 // / GET
-func home(w http.ResponseWriter, r *http.Request) {
-	// TODO: Create a middleware for this...
-	// if !config.Debug {
-	// 	_, err := checkClaims(r)
-	// 	if err != nil {
-	// 		unauthorizedRequest(w, err)
-	// 		return
-	// 	}
-	// }
-
-	renderTemplate(w, "index.html", nil)
-}
+// func home(w http.ResponseWriter, r *http.Request) {
+// 	renderTemplate(w, "index.html", nil)
+// }
 
 // / GET
 func handleConnections(w http.ResponseWriter, r *http.Request) {
-	// if !config.Debug {
-	// 	_, err := checkClaims(r)
-	// 	if err != nil {
-	// 		unauthorizedRequest(w, err)
-	// 		return
-	// 	}
-	// }
-
 	client, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		// badRequest(w, err)
@@ -177,14 +159,13 @@ func main() {
 	r := mux.NewRouter()
 
 	// Route handlers
-	r.HandleFunc("/", home).Methods("GET")
+	// r.HandleFunc("/", home).Methods("GET")
 	r.HandleFunc("/chat", handleConnections).Methods("GET")
 
 	// CORS in dev environment
 	cors := cors.New(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000"},
 		AllowCredentials: true,
-		// Debug: true,
 	})
 
 	// Run server

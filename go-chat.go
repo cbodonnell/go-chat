@@ -132,13 +132,11 @@ func handleMessages() {
 
 func jwtMiddleware(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		claims, err := checkClaims(r)
+		_, err := checkClaims(r)
 		if err != nil {
-			fmt.Println("Unauthorized request from " + r.RemoteAddr + " - " + err.Error())
 			unauthorizedRequest(w, err)
 			return
 		}
-		fmt.Println(claims)
 		h.ServeHTTP(w, r)
 	})
 }

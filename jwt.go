@@ -8,7 +8,7 @@ import (
 
 // JWTClaims struct
 type JWTClaims struct {
-	ID       string  `json:"id"`
+	ID       int     `json:"id"`
 	Username string  `json:"username"`
 	Groups   []Group `json:"groups"`
 	jwt.StandardClaims

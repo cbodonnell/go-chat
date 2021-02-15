@@ -21,7 +21,7 @@ pipeline {
                 echo 'deploying...'
                 sh 'sudo systemctl stop go-chat'
                 sh 'sudo cp go-chat /etc/go-chat/go-chat'
-                sh 'sudo cp -r templates /etc/go-chat/templates'
+                sh 'sudo cp -r templates/* /etc/go-chat/templates'
                 sh 'sudo systemctl start go-chat'
             }
         }

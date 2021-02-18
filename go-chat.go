@@ -75,20 +75,6 @@ type Group struct {
 	Name string `json:"name"`
 }
 
-// var templates = template.Must(template.ParseGlob("templates/*.html"))
-
-// func renderTemplate(w http.ResponseWriter, template string, data interface{}) {
-// 	err := templates.ExecuteTemplate(w, template, data)
-// 	if err != nil {
-// 		internalServerError(w, err)
-// 	}
-// }
-
-// / GET
-// func home(w http.ResponseWriter, r *http.Request) {
-// 	renderTemplate(w, "index.html", nil)
-// }
-
 // / GET
 func handleConnections(w http.ResponseWriter, r *http.Request) {
 	client, err := upgrader.Upgrade(w, r, nil)
@@ -155,26 +141,22 @@ func main() {
 
 	// Init router
 	r := mux.NewRouter()
-
-	// Route handlers
-	// r.HandleFunc("/", home).Methods("GET")
 	r.HandleFunc("/chat", handleConnections).Methods("GET")
-
-	// CORS in dev environment
-	cors := cors.New(cors.Options{
-		AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000"},
-		AllowCredentials: true,
-	})
+	r.Use(jwtMiddleware)
 
 	// Run server
 	port := config.Port
 	fmt.Println(fmt.Sprintf("Serving on port %d", port))
 
 	if ENV == "dev" {
+		cors := cors.New(cors.Options{
+			AllowedOrigins:   []string{"http://localhost:3000", "http://127.0.0.1:3000"},
+			AllowCredentials: true,
+		})
 		r.Use(cors.Handler)
+
 		log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", port), r))
 	}
 
-	r.Use(jwtMiddleware)
 	log.Fatal(http.ListenAndServeTLS(fmt.Sprintf(":%d", port), config.SSLCert, config.SSLKey, r))
 }
